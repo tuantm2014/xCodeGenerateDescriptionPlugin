@@ -39,10 +39,34 @@
     NSArray *properties = [selectedString componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     NSMutableString *leftSideString = [NSMutableString stringWithFormat:@"@\"%@ description:%%@\\n ", self.currentClass];
     NSMutableString *rightSideString = [NSMutableString stringWithString:@"[super description]"];
+    
+    BOOL inCommentBlock = NO;
 
-    for (NSString *property in properties) {
+    for (NSString *line in properties) {
+        
+        NSString *property = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        
         if (property.length != 0) {
-            if ([property hasPrefix:@"//"] || [property hasPrefix:@"/*"] || [property hasPrefix:@" *"] || [property hasPrefix:@" */"]) {
+            
+            if ([property hasPrefix:@" */"]) {
+                inCommentBlock = NO;
+                continue;
+            }
+            
+            NSRange rangeOfCloseComment = [property rangeOfString:@"*/"];
+            if (rangeOfCloseComment.length > 0) {
+                inCommentBlock = NO;
+                continue;
+            }
+            
+            if (inCommentBlock) {
+                continue;
+            }
+            
+            if ([property hasPrefix:@"//"]) {
+                continue;
+            } else if ([property hasPrefix:@"/*"]) {
+                inCommentBlock = YES;
                 continue;
             }
 
@@ -101,7 +125,7 @@
     }
 
     [leftSideString appendString:@"\""];
-    NSString *descriptionMethod = [NSString stringWithFormat:@"\n- (NSString *)description\n{\n    return [NSString stringWithFormat:%@,%@];\n}\n", leftSideString, rightSideString];
+    NSString *descriptionMethod = [NSString stringWithFormat:@"\n\n- (NSString *)description\n{\n    return [NSString stringWithFormat:%@,%@];\n}\n", leftSideString, rightSideString];
     return descriptionMethod;
 }
 
